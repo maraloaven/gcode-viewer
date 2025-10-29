@@ -228,7 +228,11 @@ GCodeRenderer.prototype.updateLines = function() {
 
 /* returns THREE.Object3D */
 GCodeRenderer.prototype.renderGCode = function(code) {
-  var cmd = code.words[0].letter+code.words[0].value;
+  if (!code.words || code.words.length === 0) {
+    return;
+  }
+
+  var cmd = this.normalizeCommand(code.words[0]);
   var viewModel = new GCodeViewModel(code);
 
   var geometryHandler = this.geometryHandlers[cmd] || this.geometryHandlers['default'];
@@ -243,6 +247,28 @@ GCodeRenderer.prototype.renderGCode = function(code) {
   if(viewModel.vertexLength > 0) {
     this.viewModels.push(viewModel);
   }
+};
+
+GCodeRenderer.prototype.normalizeCommand = function(word) {
+  if (!word) {
+    return '';
+  }
+
+  var letter = word.letter;
+  var value = word.value;
+
+  if (value === undefined || value === null) {
+    return letter;
+  }
+
+  if (letter === 'G' || letter === 'M') {
+    var numericValue = parseFloat(value);
+    if (!isNaN(numericValue)) {
+      value = numericValue.toString();
+    }
+  }
+
+  return letter + value;
 };
 
 
