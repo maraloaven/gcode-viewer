@@ -161,6 +161,23 @@ function highlightGCodeLine(viewModelIndex) {
   }
 }
 
+function ensureEffectController() {
+  if (!effectController) {
+    effectController = {
+      gcodeIndex: 0,
+      animate: false,
+      speed: 0,
+      color: [0, 128, 255]
+    };
+  }
+}
+
+function setControllerValue(controller, methodName, value) {
+  if (controller && typeof controller[methodName] === 'function') {
+    controller[methodName](value);
+  }
+}
+
 function onGCodeLoaded(gcode) {
       gp = new GCodeParser();
       gm = gp.parse(gcode);
@@ -170,10 +187,20 @@ function onGCodeLoaded(gcode) {
 
       var gcodeObj = gr.render(gm);
       var maxIndex = Math.max(gr.viewModels.length - 1, 0);
-      guiControllers.gcodeIndex.max(maxIndex);
-      guiControllers.gcodeIndex.setValue(0);
+
+      ensureEffectController();
+
+      var gcodeIndexController = guiControllers.gcodeIndex;
+      if (gcodeIndexController && typeof gcodeIndexController.max === 'function') {
+        gcodeIndexController.max(maxIndex);
+      }
+
+      setControllerValue(gcodeIndexController, 'setValue', 0);
       effectController.gcodeIndex = 0;
-      guiControllers.animate.setValue(true);
+
+      var animateController = guiControllers.animate;
+      effectController.animate = true;
+      setControllerValue(animateController, 'setValue', true);
 
       buildGCodeDisplay(gm, gr);
 
@@ -284,10 +311,10 @@ $(function() {
       return;
     }
 
-    guiControllers.animate.setValue(false);
+    setControllerValue(guiControllers.animate, 'setValue', false);
     effectController.animate = false;
     effectController.gcodeIndex = viewModelIndex;
-    guiControllers.gcodeIndex.setValue(viewModelIndex);
+    setControllerValue(guiControllers.gcodeIndex, 'setValue', viewModelIndex);
     gr.setIndex(viewModelIndex);
   });
 });
