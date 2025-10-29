@@ -60,6 +60,106 @@ function openDialog() {
 
 
 var gp, gm, gi, gr;
+var gcodeListElement = null;
+var codeIndexToViewModelIndex = {};
+
+function getGCodeListElement() {
+  if (!gcodeListElement) {
+    gcodeListElement = $('#gcodeList');
+  }
+  return gcodeListElement;
+}
+
+function buildGCodeDisplay(model, renderer) {
+  var $list = getGCodeListElement();
+  if (!$list || $list.length === 0) {
+    return;
+  }
+
+  $list.empty();
+  codeIndexToViewModelIndex = {};
+
+  if (renderer && renderer.viewModels) {
+    renderer.viewModels.forEach(function(viewModel, viewModelIndex) {
+      var mappedCodeIndex = typeof viewModel.code.index === 'number' ? viewModel.code.index : viewModelIndex;
+      codeIndexToViewModelIndex[mappedCodeIndex] = viewModelIndex;
+    });
+  }
+
+  model.codes.forEach(function(code, arrayIndex) {
+    var segments = [];
+
+    var codeIndexValue = typeof code.index === 'number' ? code.index : arrayIndex;
+
+    if (code.comments && code.comments.length) {
+      segments.push(code.comments.join(' ').trim());
+    }
+
+    if (code.words && code.words.length) {
+      segments.push(code.words.map(function(word) {
+        return word.raw;
+      }).join(' '));
+    }
+
+    var displayText = segments.join(' ').trim();
+    if (!displayText) {
+      displayText = '(empty)';
+    }
+
+    var $line = $('<div></div>')
+      .addClass('gcode-line')
+      .attr('data-code-index', codeIndexValue)
+      .text(displayText);
+
+    if (codeIndexToViewModelIndex[codeIndexValue] === undefined) {
+      $line.addClass('gcode-line--inactive');
+    }
+
+    $list.append($line);
+  });
+}
+
+function highlightGCodeLine(viewModelIndex) {
+  var $list = getGCodeListElement();
+  if (!$list || $list.length === 0) {
+    return;
+  }
+
+  var viewModels = gr && gr.viewModels ? gr.viewModels : [];
+  var activeViewModel = viewModels[viewModelIndex];
+  if (!activeViewModel) {
+    return;
+  }
+
+  var codeIndex = typeof activeViewModel.code.index === 'number' ? activeViewModel.code.index : viewModelIndex;
+  var $items = $list.children('.gcode-line');
+  $items.removeClass('active');
+
+  var $target = $list.find('[data-code-index="' + codeIndex + '"]');
+  if ($target.length === 0) {
+    return;
+  }
+
+  $target.addClass('active');
+
+  var container = $list[0];
+  var target = $target[0];
+
+  if (!container || !target) {
+    return;
+  }
+
+  var targetTop = target.offsetTop;
+  var targetBottom = targetTop + target.offsetHeight;
+  var containerTop = container.scrollTop;
+  var containerBottom = containerTop + container.clientHeight;
+
+  if (targetTop < containerTop) {
+    container.scrollTop = targetTop;
+  } else if (targetBottom > containerBottom) {
+    container.scrollTop = targetBottom - container.clientHeight;
+  }
+}
 
 function onGCodeLoaded(gcode) {
       gp = new GCodeParser();
@@ -69,9 +169,22 @@ function onGCodeLoaded(gcode) {
       gr = new GCodeRenderer();
 
       var gcodeObj = gr.render(gm);
-      guiControllers.gcodeIndex.max(gr.viewModels.length - 1);
+      var maxIndex = Math.max(gr.viewModels.length - 1, 0);
+      guiControllers.gcodeIndex.max(maxIndex);
       guiControllers.gcodeIndex.setValue(0);
+      effectController.gcodeIndex = 0;
       guiControllers.animate.setValue(true);
+
+      buildGCodeDisplay(gm, gr);
+
+      var originalSetIndex = gr.setIndex.bind(gr);
+      gr.setIndex = function(index) {
+        var result = originalSetIndex(index);
+        highlightGCodeLine(gr.index);
+        return result;
+      };
+
+      highlightGCodeLine(gr.index);
 
 
 
@@ -155,6 +268,28 @@ $(function() {
   }
 
   setupGui();
+
+  getGCodeListElement().on('click', '.gcode-line', function() {
+    if (!gr || !effectController) {
+      return;
+    }
+
+    var codeIndex = parseInt($(this).attr('data-code-index'), 10);
+    if (isNaN(codeIndex)) {
+      return;
+    }
+
+    var viewModelIndex = codeIndexToViewModelIndex[codeIndex];
+    if (viewModelIndex === undefined) {
+      return;
+    }
+
+    guiControllers.animate.setValue(false);
+    effectController.animate = false;
+    effectController.gcodeIndex = viewModelIndex;
+    guiControllers.gcodeIndex.setValue(viewModelIndex);
+    gr.setIndex(viewModelIndex);
+  });
 });
 
 
