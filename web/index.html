@@ -13,10 +13,51 @@
       #renderArea {
         position: fixed;
         left: 0;
-        right: 0;
+        right: 320px;
         bottom: 0;
         top: 40px;
         background-color: #000000;
+      }
+      #gcodePanel {
+        position: fixed;
+        top: 40px;
+        right: 0;
+        bottom: 0;
+        width: 320px;
+        background: rgba(0, 0, 0, 0.85);
+        color: #f0f0f0;
+        font-family: monospace;
+        display: flex;
+        flex-direction: column;
+      }
+      #gcodePanel .gcode-panel-header {
+        padding: 8px 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      #gcodeList {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 0;
+      }
+      .gcode-line {
+        padding: 4px 12px;
+        white-space: pre;
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+      }
+      .gcode-line:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+      }
+      .gcode-line--inactive {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .gcode-line.active {
+        background-color: rgba(102, 204, 255, 0.3);
+        color: #ffffff;
       }
       .dg.main {
         margin-top:40px;
@@ -70,6 +111,10 @@
 
     <!-- WebGL rendering area -->
     <div id="renderArea"></div>
+    <div id="gcodePanel">
+      <div class="gcode-panel-header">GCode</div>
+      <div id="gcodeList"></div>
+    </div>
 
     <div class="modal" id="openModal" style="display: none">
       <div class="modal-header">
